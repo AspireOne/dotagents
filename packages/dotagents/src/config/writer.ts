@@ -201,6 +201,9 @@ export async function addMcpToConfig(
     if (entry.headers && Object.keys(entry.headers).length > 0) {obj["headers"] = entry.headers;}
   }
   if (entry.env.length > 0) {obj["env"] = entry.env;}
+  if (entry.overrides && Object.keys(entry.overrides).length > 0) {
+    obj["overrides"] = entry.overrides;
+  }
 
   const section = stringify({ mcp: [obj] });
 
@@ -242,7 +245,11 @@ function classifyTableHeader(
   try {
     const parsed = parseTOML(line);
     const root = nestedTableName ? parsed[nestedTableName] : undefined;
-    const definesNestedTable = isSerializedObject(root) && Object.keys(root).length > 0;
+    const definesNestedTable = isSerializedObject(root)
+      ? Object.keys(root).length > 0
+      : Array.isArray(root) && root.some(
+        (entry) => isSerializedObject(entry) && Object.keys(entry).length > 0,
+      );
     return definesNestedTable ? "nested" : "other";
   } catch {
     return undefined;

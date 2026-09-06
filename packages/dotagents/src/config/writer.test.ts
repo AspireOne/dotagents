@@ -311,6 +311,30 @@ describe("writer", () => {
         headers: { Authorization: "Bearer tok" },
       });
     });
+
+    it("preserves target overrides when appending a server", async () => {
+      await addMcpToConfig(configPath, {
+        name: "search",
+        url: "https://example.test/mcp",
+        env: [],
+        overrides: {
+          codex: {
+            enabled: false,
+            enabled_tools: ["search"],
+            tools: { search: { approval_mode: "approve" } },
+          },
+        },
+      });
+
+      const config = await loadConfig(configPath);
+      expect(config.mcp[0]!.overrides).toEqual({
+        codex: {
+          enabled: false,
+          enabled_tools: ["search"],
+          tools: { search: { approval_mode: "approve" } },
+        },
+      });
+    });
   });
 
   describe("removeMcpFromConfig", () => {
@@ -343,6 +367,40 @@ describe("writer", () => {
         url: "https://keep.example.test/mcp",
         headers: { Authorization: "${KEEP_TOKEN}" },
         env: [],
+      }]);
+    });
+
+    it("removes nested override tables and arrays of tables", async () => {
+      const input = `version = 1
+
+[[mcp]]
+name = "remove-me"
+command = "remove-mcp"
+
+[mcp.overrides.codex.tools.search]
+approval_mode = "approve"
+
+[[mcp.overrides.codex.rules]]
+pattern = "private_*"
+enabled = false
+
+[[mcp]]
+name = "keep-me"
+command = "keep-mcp"
+
+[mcp.overrides.codex]
+enabled = true
+`;
+      await writeFile(configPath, input);
+
+      await removeMcpFromConfig(configPath, "remove-me");
+
+      const config = await loadConfig(configPath);
+      expect(config.mcp).toEqual([{
+        name: "keep-me",
+        command: "keep-mcp",
+        env: [],
+        overrides: { codex: { enabled: true } },
       }]);
     });
 

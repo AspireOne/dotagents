@@ -292,6 +292,81 @@ describe("agentsConfigSchema", () => {
     });
   });
 
+  describe("MCP target overrides", () => {
+    it("accepts portable nested values for known targets", () => {
+      const result = agentsConfigSchema.safeParse({
+        version: 1,
+        mcp: [{
+          name: "search",
+          url: "https://example.test/mcp",
+          overrides: {
+            codex: {
+              enabled: false,
+              retries: 2,
+              enabled_tools: ["search", "read"],
+              tools: { search: { approval_mode: "approve" } },
+            },
+          },
+        }],
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.mcp[0]!.overrides?.codex).toEqual({
+          enabled: false,
+          retries: 2,
+          enabled_tools: ["search", "read"],
+          tools: { search: { approval_mode: "approve" } },
+        });
+      }
+    });
+
+    it("accepts an override for a supported inactive target", () => {
+      const result = agentsConfigSchema.safeParse({
+        version: 1,
+        agents: ["opencode"],
+        mcp: [{
+          name: "search",
+          command: "search-mcp",
+          overrides: { codex: { enabled: false } },
+        }],
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects unknown target names", () => {
+      const result = agentsConfigSchema.safeParse({
+        version: 1,
+        mcp: [{
+          name: "search",
+          command: "search-mcp",
+          overrides: { codez: { enabled: false } },
+        }],
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it.each([
+      new Date("2026-01-01T00:00:00Z"),
+      Number.POSITIVE_INFINITY,
+      Number.NaN,
+      null,
+    ])("rejects unsupported override value %s", (value) => {
+      const result = agentsConfigSchema.safeParse({
+        version: 1,
+        mcp: [{
+          name: "search",
+          command: "search-mcp",
+          overrides: { codex: { unsupported: value } },
+        }],
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("subagents field", () => {
     it("defaults to empty array when absent", () => {
       const result = agentsConfigSchema.safeParse({ version: 1 });

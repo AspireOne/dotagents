@@ -6,6 +6,8 @@ export type {
   RegularSkillDependency,
   SkillSource,
   McpConfig,
+  McpOverride,
+  McpOverrideValue,
   SubagentConfig,
   PluginConfig,
   TrustConfig,
@@ -28,6 +30,7 @@ export type {
   McpDeclaration,
   McpConfigSpec,
   McpTargetResolver,
+  McpTargetId,
 } from "./agents/index.js";
 
 export { writeAgentsGitignore, ensureRootGitignoreEntries } from "./gitignore/index.js";

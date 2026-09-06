@@ -17,6 +17,7 @@ import type {
   NormalizedMcpDeclaration,
 } from "./types.js";
 import type { McpConfig } from "../config/schema.js";
+import type { McpTargetId } from "./ids.js";
 import { isSerializedObject, type SerializedObject } from "@sentry/dotagents-lib";
 import { hasErrorCode, isObject, isString } from "../utils/type-guards.js";
 
@@ -131,7 +132,7 @@ export async function reconcileMcpConfigs(
     if (seen.has(filePath)) {continue;}
     seen.add(filePath);
 
-    const expectedServers = renderServers(agent.serializeServer, normalized);
+    const expectedServers = renderServers(agent.id, agent.serializeServer, normalized);
     const expected = { [mcp.rootKey]: expectedServers };
 
     if (!existsSync(filePath)) {
@@ -196,6 +197,7 @@ export async function reconcileManagedMcpConfig(
   const previous = new Set(stateResult.state?.servers ?? []);
   const protectedNames = new Set(options.protectedNames ?? []);
   const desired = renderServers(
+    agent.id,
     agent.serializeServer,
     options.servers.map(normalizeMcpDeclaration),
   );
@@ -308,6 +310,7 @@ function normalizeMcpDeclaration(mcp: McpDeclaration): NormalizedMcpDeclaration 
       }),
       ...(mcp.env?.length && { env: mcp.env }),
       ...(mcp.envValues && { envValues: mcp.envValues }),
+      ...(mcp.overrides && { overrides: mcp.overrides }),
     };
   }
   if (!mcp.command) {
@@ -320,14 +323,35 @@ function normalizeMcpDeclaration(mcp: McpDeclaration): NormalizedMcpDeclaration 
     ...(mcp.env?.length && { env: mcp.env }),
     ...(mcp.envValues && { envValues: mcp.envValues }),
     ...(mcp.cwd && { cwd: mcp.cwd }),
+    ...(mcp.overrides && { overrides: mcp.overrides }),
   };
 }
 
 function renderServers(
+  agentId: McpTargetId,
   serializeServer: McpSerializer,
   servers: NormalizedMcpDeclaration[],
 ): SerializedObject {
-  return Object.fromEntries(servers.map(serializeServer));
+  return Object.fromEntries(servers.map((server) => {
+    const [name, serialized] = serializeServer(server);
+    const override = server.overrides?.[agentId];
+    if (!override) {return [name, serialized];}
+    if (!isSerializedObject(serialized)) {
+      throw new TypeError(`MCP serializer for "${agentId}" did not return an object`);
+    }
+    return [name, mergeMcpObjects(serialized, override)];
+  }));
+}
+
+function mergeMcpObjects(base: SerializedObject, override: SerializedObject): SerializedObject {
+  return Object.fromEntries(Object.entries({ ...base, ...override }).map(([key, value]) => {
+    const baseValue = base[key];
+    const overrideValue = override[key];
+    if (isSerializedObject(baseValue) && isSerializedObject(overrideValue)) {
+      return [key, mergeMcpObjects(baseValue, overrideValue)];
+    }
+    return [key, value];
+  }));
 }
 
 function desiredIssues(

@@ -1,4 +1,5 @@
-import type { HookEvent } from "../config/schema.js";
+import type { HookEvent, McpOverride } from "../config/schema.js";
+import type { McpTargetId } from "./ids.js";
 import type { SubagentConfigSpec } from "../subagents/types.js";
 import type { SerializedObject, SerializedValue } from "@sentry/dotagents-lib";
 
@@ -23,12 +24,15 @@ export interface McpDeclaration {
   envValues?: Record<string, string>;
   /** Working directory for stdio servers when the target supports it. */
   cwd?: string;
+  /** Target-native fields merged into the serialized server configuration. */
+  overrides?: Partial<Record<McpTargetId, McpOverride>>;
 }
 
 interface McpDeclarationBase {
   name: string;
   env?: string[];
   envValues?: Record<string, string>;
+  overrides?: Partial<Record<McpTargetId, McpOverride>>;
 }
 
 interface StdioMcpDeclaration extends McpDeclarationBase {
@@ -110,7 +114,7 @@ export type HookSerializer = (hooks: HookDeclaration[]) => SerializedValue;
  * Definition of an agent tool that dotagents manages.
  */
 export interface AgentDefinition {
-  id: string;
+  id: McpTargetId;
   displayName: string;
   /** Directory that holds agent-specific config (e.g. ".claude") */
   configDir: string;

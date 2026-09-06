@@ -36,6 +36,7 @@ export type { LockedSubagent } from "../lockfile/schema.js";
 export { UnsupportedFeature } from "../targets/errors.js";
 export { getUserMcpTarget, userMcpResolver } from "../targets/paths.js";
 export type { UserMcpTarget } from "../targets/paths.js";
+export type { McpTargetId } from "../targets/ids.js";
 export type {
   AgentDefinition,
   McpDeclaration,

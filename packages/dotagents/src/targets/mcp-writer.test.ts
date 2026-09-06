@@ -271,6 +271,85 @@ describe("writeMcpConfigs", () => {
     expect(content.mcpServers.remote).toBeDefined();
   });
 
+  it("deep-merges isolated target overrides with replacement precedence", async () => {
+    const server: McpDeclaration = {
+      name: "search",
+      url: "https://portable.example/mcp",
+      headers: { "X-Portable": "yes" },
+      overrides: {
+        codex: {
+          url: "https://codex.example/mcp",
+          enabled: false,
+          enabled_tools: ["search"],
+          http_headers: { "X-Codex": "yes" },
+          tools: { search: { approval_mode: "approve" } },
+        },
+        opencode: {
+          enabled: false,
+          headers: { "X-OpenCode": "yes" },
+        },
+      },
+    };
+
+    await writeMcpConfigs(["codex", "opencode", "claude"], [server], projectMcpResolver(dir));
+
+    const codex = parseTomlObject(
+      await readFile(join(dir, ".codex", "config.toml"), "utf-8"),
+    );
+    expect(childObject(codex, "mcp_servers")["search"]).toEqual({
+      url: "https://codex.example/mcp",
+      enabled: false,
+      enabled_tools: ["search"],
+      http_headers: { "X-Portable": "yes", "X-Codex": "yes" },
+      tools: { search: { approval_mode: "approve" } },
+    });
+
+    const opencode = parseJsoncObject(
+      await readFile(join(dir, ".opencode", "opencode.jsonc"), "utf-8"),
+    );
+    expect(childObject(opencode, "mcp")["search"]).toEqual({
+      type: "remote",
+      url: "https://portable.example/mcp",
+      enabled: false,
+      headers: { "X-Portable": "yes", "X-OpenCode": "yes" },
+    });
+
+    const claude = JSON.parse(await readFile(join(dir, ".mcp.json"), "utf-8"));
+    expect(claude.mcpServers.search).toEqual({
+      type: "http",
+      url: "https://portable.example/mcp",
+      headers: { "X-Portable": "yes" },
+    });
+  });
+
+  it("repairs override drift and is idempotent", async () => {
+    const server: McpDeclaration = {
+      name: "search",
+      command: "search-mcp",
+      args: ["portable"],
+      overrides: { codex: { args: ["native"], enabled: false } },
+    };
+    const resolver = projectMcpResolver(dir);
+
+    await reconcileMcpConfigs(["codex"], [server], resolver, "apply");
+    const filePath = join(dir, ".codex", "config.toml");
+    const generated = await readFile(filePath, "utf-8");
+    await writeFile(filePath, generated.replace("enabled = false", "enabled = true"));
+
+    const repaired = await reconcileMcpConfigs(["codex"], [server], resolver, "apply");
+    expect(repaired.issues).toEqual([
+      expect.objectContaining({ issue: expect.stringContaining('"search" drifted') }),
+    ]);
+    expect(parseTomlObject(await readFile(filePath, "utf-8"))).toEqual({
+      mcp_servers: {
+        search: { command: "search-mcp", args: ["native"], enabled: false },
+      },
+    });
+
+    const unchanged = await reconcileMcpConfigs(["codex"], [server], resolver, "apply");
+    expect(unchanged).toEqual({ issues: [], unresolved: [], written: [] });
+  });
+
   it("writes correct HTTP servers for all agents", async () => {
     const allAgents = ["claude", "cursor", "vscode", "opencode", "codex"];
     await writeMcpConfigs(allAgents, [STDIO_SERVER, HTTP_SERVER], projectMcpResolver(dir));

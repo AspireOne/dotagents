@@ -7,6 +7,7 @@ import {
   GITLAB_SSH_URL,
   type RepositorySource,
 } from "@sentry/dotagents-lib";
+import { MCP_TARGET_IDS } from "../targets/ids.js";
 
 export {
   GITHUB_HTTPS_URL,
@@ -134,6 +135,21 @@ export type ProjectConfig = z.infer<typeof projectConfigSchema>;
  * MCP server declaration: either stdio (command+args) or Streamable HTTP (url).
  * env is an array of environment variable names (values come from the user's env).
  */
+export type McpOverrideValue = string | number | boolean | McpOverrideValue[] | McpOverride;
+export interface McpOverride {
+  [key: string]: McpOverrideValue;
+}
+
+const mcpOverrideValueSchema: z.ZodType<McpOverrideValue> = z.lazy(() => z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(mcpOverrideValueSchema),
+  z.record(z.string(), mcpOverrideValueSchema),
+]));
+const mcpOverrideSchema: z.ZodType<McpOverride> = z.record(z.string(), mcpOverrideValueSchema);
+const mcpOverridesSchema = z.partialRecord(z.enum(MCP_TARGET_IDS), mcpOverrideSchema);
+
 const mcpSchema = z
   .object({
     name: z.string().min(1, "MCP server name is required"),
@@ -142,6 +158,7 @@ const mcpSchema = z
     url: z.string().optional(),
     headers: z.record(z.string(), z.string()).optional(),
     env: z.array(z.string()).default([]),
+    overrides: mcpOverridesSchema.optional(),
   })
   .check(
     z.refine((m) => {

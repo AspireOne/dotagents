@@ -16,6 +16,8 @@ export type {
   ProjectConfig,
   SkillSource,
   McpConfig,
+  McpOverride,
+  McpOverrideValue,
   SubagentConfig,
   PluginConfig,
   TrustConfig,
