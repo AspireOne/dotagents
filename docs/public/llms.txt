@@ -210,8 +210,20 @@ Each `[[mcp]]` entry requires `name` and either `command` (stdio) or `url` (Stre
 | `url` | string | HTTP only | Server URL |
 | `headers` | table | No | HTTP headers (url servers only). Supports `${VAR}` syntax for env var interpolation. |
 | `env` | string[] | No | Environment variable names to pass through |
+| `overrides` | table | No | Target-native fields keyed by `claude`, `cursor`, `codex`, `vscode`, or `opencode` |
 
-Use `${VAR}` in header values and `url` to reference secrets from the environment. Write `${VAR}` in `agents.toml` — dotagents translates it to each agent's native syntax when generating config files. Claude keeps `${VAR}`, Cursor and VS Code use `${env:VAR}`, OpenCode uses `{env:VAR}`, and Codex splits pure refs into a separate `env_http_headers` field (mixed values like `"Bearer ${TOKEN}"` stay as literals).
+Use `${VAR}` in header values and `url` to reference secrets from the environment. Write `${VAR}` in `agents.toml` — dotagents translates it to each agent's native syntax when generating config files. Claude keeps `${VAR}`, Cursor and VS Code use `${env:VAR}`, OpenCode uses `{env:VAR}`, and Codex puts pure refs in `env_http_headers`. Codex translates `Authorization = "Bearer ${TOKEN}"` to `bearer_token_env_var = "TOKEN"` and stdio `env` names to `env_vars`; other mixed header values stay literal.
+
+Target overrides are merged after native serialization. Tables merge recursively; arrays and scalars replace generated values. Values may be strings, finite numbers, booleans, arrays, or nested tables. Target-native field names are not validated. Configure overrides directly in `agents.toml`:
+
+```toml
+[mcp.overrides.codex]
+enabled = false
+enabled_tools = ["search"]
+
+[mcp.overrides.codex.tools.search]
+approval_mode = "approve"
+```
 
 Config files generated per agent:
 - Claude: `.mcp.json` (JSON)

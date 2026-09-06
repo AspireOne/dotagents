@@ -326,6 +326,8 @@ async function mcpList(args: string[], scope: ScopeRoot): Promise<void> {
 function printMcpUsage(scope: ScopeRoot): void {
   console.error(`Usage: ${commandPrefix(scope)} mcp <subcommand>
 
+Configure target-native overrides directly in agents.toml.
+
 Subcommands:
   add      Add an MCP server declaration
   remove   Remove an MCP server declaration

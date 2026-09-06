@@ -56,6 +56,8 @@ Options:
 
 Manage MCP server declarations.
 
+Configure target-native overrides directly in agents.toml.
+
 Subcommands:
   add             Add an MCP server declaration
   remove          Remove an MCP server declaration
@@ -65,6 +67,8 @@ Run 'npx @sentry/dotagents mcp <subcommand> --help' for details.`,
   "mcp add": `Usage: npx @sentry/dotagents [--project|--global|--user] mcp add <name> (--command <cmd> | --url <url>) [options]
 
 Add an MCP server declaration to agents.toml.
+
+Configure target-native overrides directly in agents.toml after adding it.
 
 Options:
   --command <cmd>       Stdio command including arguments

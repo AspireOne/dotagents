@@ -127,6 +127,28 @@ agents = ["claude", "cursor", "codex", "grok", "opencode", "pi"]
 | `vscode` | `.vscode` | `.vscode/mcp.json` | `.claude/settings.json` | -- |
 | `opencode` | `.opencode` | `.opencode/opencode.jsonc` | -- | `.opencode/agents/*.md` |
 
+MCP declarations can add native fields for a specific target. Overrides are
+merged after portable fields are translated, so nested native settings remain
+part of the managed state and are repaired by `sync`:
+
+```toml
+[[mcp]]
+name = "search"
+url = "https://example.test/mcp"
+
+[mcp.overrides.codex]
+enabled = false
+enabled_tools = ["search"]
+
+[mcp.overrides.codex.tools.search]
+approval_mode = "approve"
+```
+
+Supported override targets are `claude`, `cursor`, `codex`, `vscode`, and
+`opencode`. Target-native property names are passed through without validation.
+Tables merge recursively; arrays and scalar values replace generated values.
+Configure overrides directly in `agents.toml`.
+
 Custom subagents are declared with `[[subagents]]` entries. dotagents writes generated runtime-specific files during `install` and repairs them during `sync`:
 
 ```toml

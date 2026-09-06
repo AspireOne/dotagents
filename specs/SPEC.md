@@ -178,6 +178,7 @@ MCP server declarations. Each entry defines an MCP server that dotagents will co
 | `url` | Conditional | URL for Streamable HTTP transport. Required if `command` is not set. |
 | `headers` | No | HTTP headers (only for `url` servers). Supports `${VAR}` syntax for env var interpolation. |
 | `env` | No | Array of environment variable names. Values are referenced from the user's environment. Defaults to `[]`. |
+| `overrides` | No | Target-native server fields keyed by `claude`, `cursor`, `codex`, `vscode`, or `opencode`. |
 
 A server must have either `command` (stdio) or `url` (Streamable HTTP), but not both.
 
@@ -189,7 +190,33 @@ A server must have either `command` (stdio) or `url` (Streamable HTTP), but not 
 | Cursor | `${env:VAR}` |
 | VS Code | `${env:VAR}` |
 | OpenCode | `{env:VAR}` |
-| Codex | Pure `${VAR}` refs move to a separate `env_http_headers` field. Mixed values like `"Bearer ${TOKEN}"` stay as literals in `http_headers` (Codex limitation). |
+| Codex | Pure `${VAR}` refs move to `env_http_headers`; `Authorization = "Bearer ${TOKEN}"` becomes `bearer_token_env_var = "TOKEN"`. Other mixed values stay literal in `http_headers`. Stdio `env` names become `env_vars`. |
+
+**Target-native overrides.** An MCP entry may include arbitrary native server
+fields for a supported target. The target adapter first generates the portable
+server representation, then recursively merges `[mcp.overrides.<target>]` over
+it. Override scalars and arrays replace generated values; tables merge
+recursively. Overrides never affect another target.
+
+```toml
+[[mcp]]
+name = "search"
+url = "https://example.test/mcp"
+
+[mcp.overrides.codex]
+enabled = false
+enabled_tools = ["search"]
+
+[mcp.overrides.codex.tools.search]
+approval_mode = "approve"
+```
+
+Override values may contain strings, finite numbers, booleans, arrays, and
+nested tables. Dates, non-finite numbers, and null are rejected because they do
+not project consistently to every target format. Native property names and
+semantics are not validated by dotagents. `install` and `sync` treat the merged
+result as the expected state of the managed MCP server. The MCP CLI does not
+provide flags for overrides; edit `agents.toml` directly.
 
 #### `[[hooks]]`
 
@@ -282,7 +309,7 @@ Global scope installs canonical plugins into `~/.agents/plugins/<name>/`. It gen
 | `vscode` | VS Code Copilot | `.vscode` | `.vscode/mcp.json` | JSON | Not supported |
 | `opencode` | OpenCode | `.opencode` | `.opencode/opencode.jsonc` | JSONC (shared) | `.opencode/agents/*.md` |
 
-Each agent has its own MCP config format. dotagents translates the universal `[[mcp]]` declarations into the format each tool expects during `install` and `sync`. Grok is currently supported for plugin projections only.
+Each agent has its own MCP config format. dotagents translates the universal `[[mcp]]` declarations into the format each tool expects during `install` and `sync`, then applies that entry's target-native override. Grok is currently supported for plugin projections only.
 
 ### Source Types
 
