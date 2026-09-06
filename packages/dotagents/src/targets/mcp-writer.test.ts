@@ -107,8 +107,31 @@ describe("writeMcpConfigs", () => {
     await writeMcpConfigs(["codex"], [STDIO_SERVER], projectMcpResolver(dir));
 
     const raw = await readFile(join(dir, ".codex", "config.toml"), "utf-8");
-    expect(raw).toContain("mcp_servers");
-    expect(raw).toContain("github");
+    const content = parseTomlObject(raw);
+    expect(childObject(content, "mcp_servers")["github"]).toEqual({
+      command: "npx",
+      args: ["-y", "@mcp/server-github"],
+      env_vars: ["GITHUB_TOKEN"],
+    });
+  });
+
+  it("keeps adapter-provided Codex environment values literal", async () => {
+    await writeMcpConfigs(["codex"], [{
+      name: "adapter",
+      command: "node",
+      env: ["PASSTHROUGH"],
+      envValues: { LITERAL: "value" },
+    }], projectMcpResolver(dir));
+
+    const content = parseTomlObject(
+      await readFile(join(dir, ".codex", "config.toml"), "utf-8"),
+    );
+    expect(childObject(content, "mcp_servers")["adapter"]).toEqual({
+      command: "node",
+      args: [],
+      env: { LITERAL: "value" },
+      env_vars: ["PASSTHROUGH"],
+    });
   });
 
   it("writes .opencode/opencode.jsonc by default", async () => {
@@ -501,10 +524,8 @@ describe("writeMcpConfigs", () => {
     const content = parseTomlObject(raw);
     expect(childObject(content, "mcp_servers")["authed-api"]).toEqual({
       url: "https://${API_HOST}/mcp",
-      // Pure ref: X-Api-Key = "${API_KEY}" → env_http_headers.API_KEY = "X-Api-Key"
-      env_http_headers: { API_KEY: "X-Api-Key" },
-      // Mixed ref stays as literal in http_headers
-      http_headers: { Authorization: "Bearer ${TOKEN}" },
+      env_http_headers: { "X-Api-Key": "API_KEY" },
+      bearer_token_env_var: "TOKEN",
     });
   });
 

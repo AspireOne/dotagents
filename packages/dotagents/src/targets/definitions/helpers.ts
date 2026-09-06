@@ -7,6 +7,7 @@ type ClaudeHookEntry = { matcher?: string; hooks: CommandHook[] };
 export interface CodexHeaders {
   httpHeaders?: Record<string, string>;
   envHttpHeaders?: Record<string, string>;
+  bearerTokenEnvVar?: string;
 }
 
 /** Build an agent-specific environment map from declared variable names. */
@@ -46,9 +47,9 @@ export function interpolateHeaders(
 
 /**
  * Split headers for Codex's model: pure `${VAR}` refs go to `envHttpHeaders`
- * (mapping env var name to header name), everything else stays in `httpHeaders`.
- * Mixed values like `"Bearer ${TOKEN}"` can't be represented in Codex's
- * env_http_headers format and fall through as literal strings in httpHeaders.
+ * (mapping header name to env var name), while a symbolic bearer Authorization
+ * header uses Codex's dedicated bearer-token field. Everything else stays in
+ * `httpHeaders`.
  */
 export function extractCodexHeaders(
   headers: Record<string, string> | undefined,
@@ -56,16 +57,25 @@ export function extractCodexHeaders(
   if (!headers) {return {};}
   let httpHeaders: Record<string, string> | undefined;
   let envHttpHeaders: Record<string, string> | undefined;
+  let bearerTokenEnvVar: string | undefined;
   const pureRefRe = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/;
+  const bearerRefRe = /^Bearer\s+\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/i;
   for (const [key, value] of Object.entries(headers)) {
+    const bearerMatch = key.toLowerCase() === "authorization"
+      ? bearerRefRe.exec(value)
+      : null;
+    if (bearerMatch) {
+      bearerTokenEnvVar = bearerMatch[1]!;
+      continue;
+    }
     const match = pureRefRe.exec(value);
     if (match) {
-      (envHttpHeaders ??= {})[match[1]!] = key;
+      (envHttpHeaders ??= {})[key] = match[1]!;
     } else {
       (httpHeaders ??= {})[key] = value;
     }
   }
-  return { httpHeaders, envHttpHeaders };
+  return { httpHeaders, envHttpHeaders, bearerTokenEnvVar };
 }
 
 /** Serialize an HTTP MCP server into the target's JSON-compatible shape. */

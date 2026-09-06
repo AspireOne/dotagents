@@ -55,7 +55,7 @@ describe("extractCodexHeaders", () => {
       "X-Api-Key": "${GOOGLE_API_KEY}",
     });
     expect(httpHeaders).toBeUndefined();
-    expect(envHttpHeaders).toEqual({ GOOGLE_API_KEY: "X-Api-Key" });
+    expect(envHttpHeaders).toEqual({ "X-Api-Key": "GOOGLE_API_KEY" });
   });
 
   it("keeps static values in httpHeaders", () => {
@@ -66,12 +66,13 @@ describe("extractCodexHeaders", () => {
     expect(envHttpHeaders).toBeUndefined();
   });
 
-  it("keeps mixed values in httpHeaders as literal fallback", () => {
-    const { httpHeaders, envHttpHeaders } = extractCodexHeaders({
-      Authorization: "Bearer ${TOKEN}",
+  it("maps symbolic bearer authorization to bearerTokenEnvVar", () => {
+    const { httpHeaders, envHttpHeaders, bearerTokenEnvVar } = extractCodexHeaders({
+      authorization: "bearer ${TOKEN}",
     });
-    expect(httpHeaders).toEqual({ Authorization: "Bearer ${TOKEN}" });
+    expect(httpHeaders).toBeUndefined();
     expect(envHttpHeaders).toBeUndefined();
+    expect(bearerTokenEnvVar).toBe("TOKEN");
   });
 
   it("splits mixed and pure refs correctly", () => {
@@ -80,7 +81,7 @@ describe("extractCodexHeaders", () => {
       Authorization: "Bearer tok",
       "X-Mixed": "prefix ${VAR} suffix",
     });
-    expect(envHttpHeaders).toEqual({ API_KEY: "X-Api-Key" });
+    expect(envHttpHeaders).toEqual({ "X-Api-Key": "API_KEY" });
     expect(httpHeaders).toEqual({
       Authorization: "Bearer tok",
       "X-Mixed": "prefix ${VAR} suffix",
