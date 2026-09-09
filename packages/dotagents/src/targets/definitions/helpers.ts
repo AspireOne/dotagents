@@ -48,7 +48,7 @@ export function interpolateHeaders(
 /**
  * Split headers for Codex's model: pure `${VAR}` refs go to `envHttpHeaders`
  * (mapping header name to env var name), while a symbolic bearer Authorization
- * header uses Codex's dedicated bearer-token field. Everything else stays in
+ * header uses Codex's dedicated bearer-token field. Other values stay in
  * `httpHeaders`.
  */
 export function extractCodexHeaders(

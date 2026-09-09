@@ -4,9 +4,10 @@ import cursor from "./definitions/cursor.js";
 import codex from "./definitions/codex.js";
 import vscode from "./definitions/vscode.js";
 import opencode from "./definitions/opencode.js";
+import copilot from "./definitions/copilot.js";
 import { MCP_TARGET_IDS } from "./ids.js";
 
-const DEFINITIONS_BY_ID = { claude, cursor, codex, vscode, opencode } satisfies Record<
+const DEFINITIONS_BY_ID = { claude, cursor, codex, vscode, opencode, copilot } satisfies Record<
   typeof MCP_TARGET_IDS[number],
   AgentDefinition
 >;
