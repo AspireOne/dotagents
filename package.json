@@ -1,6 +1,6 @@
 {
   "name": "dotagents-monorepo",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Shared tooling for coding agents (workspace root)",
   "private": true,
   "type": "module",
@@ -38,7 +38,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "pnpm": {
     "overrides": {
